@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>سجل الحضور</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#15171c">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="الحضور">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#15171c; --panel:#1e2128; --panel2:#262a33; --line:#333844;
+  --text:#eef0f3; --muted:#8b909c; --gold:#d9a441;
+  --green:#3fae5a; --red:#d1544a; --blue:#3f8fd9; --gray:#5c626f; --future:#2a2e37;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+*{box-sizing:border-box}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+html,body{height:100%;overscroll-behavior-y:contain;overscroll-behavior-x:none}
+body{margin:0;background:var(--bg);color:var(--text);font-family:'Cairo',sans-serif;min-height:100%;-webkit-user-select:none;user-select:none}
+input,textarea{-webkit-user-select:text;user-select:text}
+header{position:sticky;top:0;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);padding:18px 16px 10px;border-bottom:1px solid var(--line)}
+h1{font-size:20px;margin:0 0 14px;font-weight:800}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+input[type=text],input[type=password]{flex:1;min-width:120px;background:var(--panel);border:1px solid var(--line);color:var(--text);border-radius:10px;padding:11px 12px;font-family:inherit;font-size:14px}
+input:focus{outline:2px solid var(--gold);border-color:var(--gold)}
+button{font-family:inherit;border:none;border-radius:10px;padding:11px 16px;font-size:14px;font-weight:700;cursor:pointer}
+.btn-gold{background:var(--gold);color:#1a1a1a}
+.btn-ghost{background:var(--panel2);color:var(--text)}
+main{padding:14px 16px 60px}
+.list{display:flex;flex-direction:column;gap:8px;margin-top:14px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px;display:flex;align-items:center;gap:10px}
+.badge{background:var(--panel2);color:var(--gold);font-weight:800;font-size:12px;border-radius:8px;padding:6px 9px;min-width:34px;text-align:center}
+.name{flex:1;font-weight:700;font-size:15px;cursor:pointer}
+.name .sub{display:block;color:var(--muted);font-weight:400;font-size:12px;margin-top:2px}
+.io{display:flex;gap:6px}
+.io button{padding:8px 12px;font-size:13px}
+.io .in{background:var(--green);color:#fff}
+.io .out{background:var(--red);color:#fff}
+.io button:disabled{opacity:.35;cursor:not-allowed}
+.empty{color:var(--muted);text-align:center;padding:40px 10px;font-size:14px}
+
+/* login */
+#loginScreen{position:fixed;inset:0;background:var(--bg);z-index:50;display:flex;align-items:center;justify-content:center;padding:20px}
+.loginBox{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:26px 22px;width:100%;max-width:340px;text-align:center}
+.loginBox h2{margin:0 0 6px;font-size:19px;font-weight:800}
+.loginBox p{color:var(--muted);font-size:13px;margin:0 0 18px}
+.loginBox input{width:100%;margin-bottom:10px}
+.loginBox button{width:100%}
+.loginMsg{color:var(--red);font-size:13px;margin-top:10px;min-height:16px}
+.hidden{display:none !important}
+
+/* detail overlay */
+.overlay{position:fixed;inset:0;background:var(--bg);z-index:20;display:none;overflow-y:auto}
+.overlay.open{display:block}
+.dhead{position:sticky;top:0;top:env(safe-area-inset-top,0px);background:var(--bg);border-bottom:1px solid var(--line);padding:14px 16px;display:flex;align-items:center;gap:10px}
+.back{background:var(--panel2);color:var(--text);border-radius:10px;padding:9px 13px}
+.dname{flex:1;display:flex;align-items:center;gap:8px}
+.dname input{background:var(--panel);border:1px solid var(--line);color:var(--text);border-radius:8px;padding:8px 10px;font-family:inherit;font-size:16px;font-weight:700;width:100%}
+.dname .txt{font-weight:800;font-size:17px}
+.edit-btn{background:none;border:none;color:var(--gold);font-size:13px;cursor:pointer;font-weight:700}
+.dbody{padding:20px 16px}
+.monthnav{display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:14px}
+.monthnav button{background:var(--panel2);color:var(--gold);padding:8px 12px}
+.monthlabel{font-weight:800;font-size:15px;min-width:120px;text-align:center}
+.wheel{display:flex;justify-content:center;margin:10px 0}
+.legend{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;font-size:12px;color:var(--muted);margin-bottom:18px}
+.legend span{display:inline-flex;align-items:center;gap:5px}
+.dot{width:10px;height:10px;border-radius:50%;display:inline-block}
+.daypanel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px;text-align:center}
+.daypanel .dt{color:var(--gold);font-weight:800;margin-bottom:8px;font-size:15px}
+.daypanel .times{display:flex;justify-content:center;gap:24px;font-size:14px;margin-top:6px}
+.daypanel .times div span{display:block;color:var(--muted);font-size:12px;margin-top:2px}
+.seg{cursor:pointer;transition:opacity .15s}
+.seg:hover{opacity:.8}
+.seg.sel{stroke:#fff;stroke-width:2}
+</style>
+</head>
+<body>
+
+<div id="loginScreen">
+  <div class="loginBox">
+    <h2>سجل الحضور</h2>
+    <p>سجّل دخولك لعرض بيانات شركتك</p>
+    <input type="text" id="loginUser" placeholder="اسم المستخدم" autocomplete="username">
+    <input type="password" id="loginPass" placeholder="كلمة المرور" autocomplete="current-password">
+    <button class="btn-gold" onclick="doLogin()">دخول</button>
+    <div class="loginMsg" id="loginMsg"></div>
+  </div>
+</div>
+
+<div id="app" class="hidden">
+<header>
+  <div class="row" style="justify-content:space-between;align-items:center">
+    <h1>سجل حضور وانصراف العمال</h1>
+    <button class="btn-ghost" style="padding:7px 12px;font-size:12px" onclick="doLogout()">خروج</button>
+  </div>
+  <div class="row">
+    <input type="text" id="searchBox" placeholder="ابحث بالاسم أو الكود">
+  </div>
+  <div class="row" style="margin-top:8px">
+    <input type="text" id="newName" placeholder="اسم عامل جديد">
+    <button class="btn-gold" onclick="addWorker()">إضافة عامل</button>
+  </div>
+</header>
+
+<main>
+  <div class="list" id="list"></div>
+</main>
+
+<div class="overlay" id="overlay">
+  <div class="dhead">
+    <button class="back" onclick="closeDetail()">رجوع ←</button>
+    <div class="dname" id="dnameWrap"></div>
+  </div>
+  <div class="dbody">
+    <div class="monthnav">
+      <button onclick="shiftMonth(-1)">‹</button>
+      <div class="monthlabel" id="monthLabel"></div>
+      <button onclick="shiftMonth(1)">›</button>
+    </div>
+    <div class="wheel" id="wheel"></div>
+    <div class="legend">
+      <span><i class="dot" style="background:var(--green)"></i>حضور</span>
+      <span><i class="dot" style="background:var(--red)"></i>غياب</span>
+      <span><i class="dot" style="background:var(--blue)"></i>جمعة (حضور)</span>
+      <span><i class="dot" style="background:var(--gray)"></i>بدل جمعة</span>
+    </div>
+    <div class="daypanel" id="dayPanel">اضغط على أي يوم في الدائرة لعرض تفاصيله</div>
+  </div>
+</div>
+</div>
+
+<script>
+const API = ''; // same origin
+let accessToken = null;
+let refreshToken = localStorage.getItem('refresh_token');
+let deviceId = localStorage.getItem('device_id');
+if (!deviceId) {
+  deviceId = crypto.randomUUID();
+  localStorage.setItem('device_id', deviceId);
+}
+
+let workersCache = [];
+let currentWorkerId = null;
+let currentWorkerName = '';
+let viewYear, viewMonth;
+let selectedDay = null;
+
+/* ---------- API helper with silent token refresh ---------- */
+async function api(path, opts = {}) {
+  opts.headers = Object.assign({ 'Content-Type': 'application/json' }, opts.headers || {});
+  if (accessToken) opts.headers['Authorization'] = 'Bearer ' + accessToken;
+  opts.headers['X-Device-Id'] = deviceId;
+  let res = await fetch(API + path, opts);
+  if (res.status === 401 && refreshToken) {
+    const ok = await tryRefresh();
+    if (ok) {
+      opts.headers['Authorization'] = 'Bearer ' + accessToken;
+      res = await fetch(API + path, opts);
+    }
+  }
+  return res;
+}
+
+async function tryRefresh() {
+  try {
+    const r = await fetch(API + '/api/auth/refresh', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refreshToken, deviceId })
+    });
+    if (!r.ok) return false;
+    const data = await r.json();
+    accessToken = data.accessToken;
+    return true;
+  } catch (e) { return false; }
+}
+
+/* ---------- Auth ---------- */
+async function doLogin() {
+  const username = document.getElementById('loginUser').value.trim();
+  const password = document.getElementById('loginPass').value;
+  const msg = document.getElementById('loginMsg');
+  msg.textContent = '';
+  if (!username || !password) { msg.textContent = 'ادخل اسم المستخدم وكلمة المرور'; return; }
+
+  const r = await fetch(API + '/api/auth/login', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, password, deviceId, deviceLabel: navigator.userAgent })
+  });
+  const data = await r.json();
+  if (!r.ok) {
+    const map = {
+      invalid_credentials: 'اسم المستخدم أو كلمة المرور غير صحيحة',
+      account_disabled: 'الحساب موقوف، تواصل مع الدعم',
+      license_invalid: 'الترخيص غير فعّال',
+      device_pending: 'هذا الجهاز بانتظار موافقة الأدمن',
+      device_blocked: 'هذا الجهاز محظور'
+    };
+    msg.textContent = map[data.error] || 'حدث خطأ، حاول مرة أخرى';
+    return;
+  }
+  accessToken = data.accessToken;
+  refreshToken = data.refreshToken;
+  localStorage.setItem('refresh_token', refreshToken);
+  showApp();
+}
+
+async function doLogout() {
+  await fetch(API + '/api/auth/logout', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ refreshToken })
+  }).catch(() => {});
+  accessToken = null; refreshToken = null;
+  localStorage.removeItem('refresh_token');
+  document.getElementById('app').classList.add('hidden');
+  document.getElementById('loginScreen').classList.remove('hidden');
+}
+
+function showApp() {
+  document.getElementById('loginScreen').classList.add('hidden');
+  document.getElementById('app').classList.remove('hidden');
+  renderList();
+}
+
+async function boot() {
+  if (refreshToken) {
+    const ok = await tryRefresh();
+    if (ok) { showApp(); return; }
+  }
+  document.getElementById('loginScreen').classList.remove('hidden');
+}
+
+/* ---------- Workers list ---------- */
+function escapeHtml(s){ const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
+
+async function addWorker(){
+  const input = document.getElementById('newName');
+  const name = input.value.trim();
+  if(!name) return;
+  const r = await api('/api/workers', { method:'POST', body: JSON.stringify({ name }) });
+  if (r.ok) { input.value=''; renderList(); }
+}
+
+async function renderList(){
+  const q = document.getElementById('searchBox').value.trim();
+  const r = await api('/api/workers' + (q ? '?search=' + encodeURIComponent(q) : ''));
+  if (!r.ok) return;
+  workersCache = await r.json();
+  const wrap = document.getElementById('list');
+  wrap.innerHTML='';
+  if(workersCache.length===0){
+    wrap.innerHTML = '<div class="empty">لا يوجد عمال مطابقين</div>';
+    return;
+  }
+  workersCache.forEach(w=>{
+    const card = document.createElement('div');
+    card.className='card';
+    card.innerHTML = `
+      <div class="badge">${w.worker_code}</div>
+      <div class="name" onclick="openDetail(${w.id}, '${escapeHtml(w.name)}')">${escapeHtml(w.name)}
+        <span class="sub">${w.today_in ? 'دخول '+w.today_in : 'لم يسجل دخول اليوم'}${w.today_out ? ' — خروج '+w.today_out : ''}</span>
+      </div>
+      <div class="io">
+        <button class="in" ${w.today_in ? 'disabled':''} onclick="doCheck(${w.id},'checkin')">دخول</button>
+        <button class="out" ${(!w.today_in || w.today_out) ? 'disabled':''} onclick="doCheck(${w.id},'checkout')">خروج</button>
+      </div>`;
+    wrap.appendChild(card);
+  });
+}
+
+async function doCheck(id, kind){
+  const r = await api(`/api/attendance/${id}/${kind}`, { method:'POST' });
+  if (!r.ok) { const d = await r.json().catch(()=>({})); alert(d.error === 'no_checkin_yet' ? 'لازم يسجل دخول الأول' : 'حدث خطأ'); return; }
+  renderList();
+  if(currentWorkerId===id) renderDetail();
+}
+
+/* ---------- Detail / month wheel ---------- */
+function openDetail(id, name){
+  currentWorkerId = id; currentWorkerName = name;
+  const now = new Date();
+  viewYear = now.getFullYear(); viewMonth = now.getMonth();
+  selectedDay = null;
+  renderDetail();
+  document.getElementById('overlay').classList.add('open');
+}
+function closeDetail(){
+  document.getElementById('overlay').classList.remove('open');
+  currentWorkerId = null;
+}
+function shiftMonth(delta){
+  viewMonth += delta;
+  if(viewMonth<0){viewMonth=11; viewYear--;}
+  if(viewMonth>11){viewMonth=0; viewYear++;}
+  selectedDay = null;
+  renderDetail();
+}
+
+async function renderDetail(){
+  const wrap = document.getElementById('dnameWrap');
+  wrap.innerHTML = `<span class="txt" id="nameTxt">${escapeHtml(currentWorkerName)}</span>
+    <button class="edit-btn" onclick="editName()">تعديل الاسم</button>`;
+
+  const monthNames = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+  document.getElementById('monthLabel').textContent = monthNames[viewMonth] + ' ' + viewYear;
+
+  const r = await api(`/api/attendance/${currentWorkerId}/month/${viewYear}/${viewMonth+1}`);
+  if (!r.ok) return;
+  const data = await r.json();
+  drawWheel(data.days);
+  renderDayPanel(data.days);
+}
+
+function editName(){
+  const wrap = document.getElementById('dnameWrap');
+  wrap.innerHTML = `<input type="text" id="nameInput" value="${escapeHtml(currentWorkerName)}">
+    <button class="edit-btn" onclick="saveName()">حفظ</button>`;
+  document.getElementById('nameInput').focus();
+}
+async function saveName(){
+  const val = document.getElementById('nameInput').value.trim();
+  if (!val) return;
+  const r = await api(`/api/workers/${currentWorkerId}`, { method:'PATCH', body: JSON.stringify({ name: val }) });
+  if (r.ok) { currentWorkerName = val; renderDetail(); renderList(); }
+}
+
+const COLORS = {
+  PRESENT:'var(--green)', ABSENT:'var(--red)', FRIDAY_WORK:'var(--blue)',
+  COMPENSATED:'var(--gray)', FUTURE:'var(--future)', NONE:'var(--future)'
+};
+
+function drawWheel(days){
+  const total = days.length;
+  const size = 280, cx=size/2, cy=size/2, rOuter=125, rInner=78;
+  const gapDeg = 1.4;
+  const anglePer = 360/total;
+  let svg = `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">`;
+  days.forEach((d,i)=>{
+    const startA = -90 + i*anglePer + gapDeg/2;
+    const endA = -90 + (i+1)*anglePer - gapDeg/2;
+    const p = arcPath(cx,cy,rInner,rOuter,startA,endA);
+    const color = COLORS[d.status] || 'var(--future)';
+    const sel = (selectedDay===d.day) ? ' sel' : '';
+    svg += `<path class="seg${sel}" d="${p}" fill="${color}" onclick="selectDay(${d.day})"></path>`;
+  });
+  svg += `<text x="${cx}" y="${cy-4}" text-anchor="middle" fill="var(--text)" font-size="14" font-weight="800" font-family="Cairo">${escapeHtml(currentWorkerName).slice(0,10)}</text>`;
+  svg += `<text x="${cx}" y="${cy+16}" text-anchor="middle" fill="var(--muted)" font-size="11" font-family="Cairo">${total} يوم</text>`;
+  svg += `</svg>`;
+  document.getElementById('wheel').innerHTML = svg;
+  window._monthDays = days;
+}
+
+function polar(cx,cy,r,deg){ return {x: cx + r*Math.cos(deg*Math.PI/180), y: cy + r*Math.sin(deg*Math.PI/180)}; }
+function arcPath(cx,cy,rInner,rOuter,startA,endA){
+  const p1 = polar(cx,cy,rOuter,startA), p2 = polar(cx,cy,rOuter,endA);
+  const p3 = polar(cx,cy,rInner,endA), p4 = polar(cx,cy,rInner,startA);
+  const large = (endA-startA)>180 ? 1:0;
+  return `M ${p1.x} ${p1.y} A ${rOuter} ${rOuter} 0 ${large} 1 ${p2.x} ${p2.y} L ${p3.x} ${p3.y} A ${rInner} ${rInner} 0 ${large} 0 ${p4.x} ${p4.y} Z`;
+}
+
+function selectDay(day){
+  selectedDay = day;
+  drawWheel(window._monthDays);
+  renderDayPanel(window._monthDays);
+}
+
+function renderDayPanel(days){
+  const panel = document.getElementById('dayPanel');
+  if(!selectedDay){ panel.innerHTML = 'اضغط على أي يوم في الدائرة لعرض تفاصيله'; return; }
+  const d = days.find(x=>x.day===selectedDay);
+  if(!d) return;
+  const dateObj = new Date(d.date);
+  const monthNames = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+  const weekDays = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
+  const label = `${weekDays[dateObj.getDay()]} ${selectedDay} ${monthNames[viewMonth]} ${viewYear}`;
+
+  const statusText = {
+    FUTURE:'لم يحن هذا اليوم بعد', ABSENT:'غياب',
+    NONE:'إجازة الجمعة (لم يحضر)', COMPENSATED:'غياب تم تعويضه بيوم جمعة'
+  };
+
+  panel.innerHTML = `
+    <div class="dt">${label}</div>
+    ${d.in ? `<div class="times">
+        <div>دخول<span>${d.in}</span></div>
+        <div>خروج<span>${d.out || '—'}</span></div>
+      </div>` : `<div style="color:var(--muted);font-size:13px">${statusText[d.status] || ''}</div>`}
+  `;
+}
+
+document.getElementById('searchBox').addEventListener('input', renderList);
+document.getElementById('newName').addEventListener('keydown', e=>{ if(e.key==='Enter') addWorker(); });
+document.getElementById('loginPass').addEventListener('keydown', e=>{ if(e.key==='Enter') doLogin(); });
+
+/* منع سحب الشاشة لأسفل من إعادة تحميل الصفحة */
+let touchStartY = 0;
+document.addEventListener('touchstart', (e)=>{ touchStartY = e.touches[0].clientY; }, {passive:true});
+document.addEventListener('touchmove', (e)=>{
+  const atTop = window.scrollY <= 0;
+  const pullingDown = e.touches[0].clientY > touchStartY;
+  if(atTop && pullingDown && e.cancelable){ e.preventDefault(); }
+}, {passive:false});
+
+if('serviceWorker' in navigator){
+  window.addEventListener('load', ()=>{ navigator.serviceWorker.register('service-worker.js').catch(()=>{}); });
+}
+
+boot();
+</script>
+</body>
+</html>

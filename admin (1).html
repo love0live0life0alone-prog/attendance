@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>لوحة الأدمن — سجل الحضور</title>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#15171c;--panel:#1e2128;--panel2:#262a33;--line:#333844;--text:#eef0f3;--muted:#8b909c;--gold:#d9a441;--green:#3fae5a;--red:#d1544a;}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:'Cairo',sans-serif;padding:18px}
+h1{font-size:19px;margin:0 0 16px}
+h2{font-size:15px;color:var(--gold);margin:24px 0 10px}
+table{width:100%;border-collapse:collapse;background:var(--panel);border-radius:10px;overflow:hidden;font-size:13px}
+th,td{padding:9px 10px;text-align:right;border-bottom:1px solid var(--line)}
+th{background:var(--panel2);color:var(--muted);font-weight:700}
+tr:last-child td{border-bottom:none}
+button{font-family:inherit;border:none;border-radius:8px;padding:6px 11px;font-size:12px;font-weight:700;cursor:pointer;margin-left:4px}
+.g{background:var(--green);color:#fff} .r{background:var(--red);color:#fff} .n{background:var(--panel2);color:var(--text)} .gold{background:var(--gold);color:#1a1a1a}
+input{background:var(--panel2);border:1px solid var(--line);color:var(--text);border-radius:8px;padding:8px;font-family:inherit;margin-left:6px}
+#loginBox{max-width:320px;margin:60px auto;background:var(--panel);padding:24px;border-radius:14px;text-align:center}
+#loginBox input{width:100%;margin:0 0 10px;box-sizing:border-box}
+.hidden{display:none !important}
+.pill{padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700}
+.pill.active{background:#1c3a24;color:var(--green)} .pill.pending{background:#3a2f1c;color:var(--gold)} .pill.blocked{background:#3a1c1c;color:var(--red)} .pill.disabled{background:#3a1c1c;color:var(--red)}
+.newCustomer{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+</style>
+</head>
+<body>
+
+<div id="loginBox">
+  <h1>دخول الأدمن</h1>
+  <input id="au" placeholder="اسم المستخدم">
+  <input id="ap" type="password" placeholder="كلمة المرور">
+  <button class="gold" style="width:100%" onclick="login()">دخول</button>
+  <div id="lmsg" style="color:var(--red);font-size:12px;margin-top:8px"></div>
+</div>
+
+<div id="dash" class="hidden">
+  <h1>لوحة الأدمن</h1>
+
+  <h2>إضافة عميل جديد</h2>
+  <div class="newCustomer">
+    <input id="ncUser" placeholder="Username">
+    <input id="ncPass" placeholder="Password">
+    <input id="ncCompany" placeholder="اسم الشركة">
+    <button class="gold" onclick="createCustomer()">إضافة</button>
+  </div>
+
+  <h2>العملاء</h2>
+  <table id="custTable"><thead><tr><th>#</th><th>Username</th><th>الشركة</th><th>الحالة</th><th>الترخيص</th><th>آخر دخول</th><th>أجهزة Pending</th><th></th></tr></thead><tbody></tbody></table>
+
+  <h2 id="devicesTitle" class="hidden">أجهزة العميل</h2>
+  <table id="devTable" class="hidden"><thead><tr><th>Device ID</th><th>الحالة</th><th>أول ظهور</th><th>آخر نشاط</th><th></th></tr></thead><tbody></tbody></table>
+
+  <h2>سجل تسجيل الدخول (آخر 200)</h2>
+  <table id="loginTable"><thead><tr><th>الوقت</th><th>Username</th><th>Device</th><th>النتيجة</th><th>IP</th></tr></thead><tbody></tbody></table>
+</div>
+
+<script>
+let token = localStorage.getItem('admin_token');
+const API = '';
+
+async function api(path, opts={}) {
+  opts.headers = Object.assign({'Content-Type':'application/json'}, opts.headers||{});
+  if (token) opts.headers['Authorization'] = 'Bearer ' + token;
+  return fetch(API+path, opts);
+}
+
+async function login(){
+  const r = await fetch(API+'/api/admin/login', {method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({username: document.getElementById('au').value, password: document.getElementById('ap').value})});
+  if(!r.ok){ document.getElementById('lmsg').textContent='بيانات غير صحيحة'; return; }
+  const d = await r.json();
+  token = d.token; localStorage.setItem('admin_token', token);
+  showDash();
+}
+
+function showDash(){
+  document.getElementById('loginBox').classList.add('hidden');
+  document.getElementById('dash').classList.remove('hidden');
+  loadCustomers(); loadHistory();
+}
+
+async function loadCustomers(){
+  const r = await api('/api/admin/customers');
+  if (r.status===401){ localStorage.removeItem('admin_token'); location.reload(); return; }
+  const rows = await r.json();
+  const tb = document.querySelector('#custTable tbody'); tb.innerHTML='';
+  rows.forEach(c=>{
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${c.id}</td><td>${c.username}</td><td>${c.company_name}</td>
+      <td><span class="pill ${c.status}">${c.status}</span></td>
+      <td><span class="pill ${c.license_status==='active'?'active':'blocked'}">${c.license_status}</span></td>
+      <td>${c.last_login ? new Date(c.last_login).toLocaleString('ar-EG') : '—'}</td>
+      <td>${c.pending_devices>0 ? '⚠️ '+c.pending_devices : '0'}</td>
+      <td>
+        <button class="n" onclick="viewDevices(${c.id},'${c.username}')">الأجهزة</button>
+        ${c.status==='active' ? `<button class="r" onclick="setCustomer(${c.id},{status:'disabled'})">إيقاف</button>` : `<button class="g" onclick="setCustomer(${c.id},{status:'active'})">تفعيل</button>`}
+      </td>`;
+    tb.appendChild(tr);
+  });
+}
+
+async function createCustomer(){
+  const username = document.getElementById('ncUser').value.trim();
+  const password = document.getElementById('ncPass').value;
+  const companyName = document.getElementById('ncCompany').value.trim();
+  if(!username||!password||!companyName) return alert('من فضلك املأ كل الحقول');
+  const r = await api('/api/admin/customers', {method:'POST', body: JSON.stringify({username,password,companyName})});
+  if(!r.ok){ const d=await r.json(); alert(d.error==='username_taken'?'اسم المستخدم مستخدم بالفعل':'خطأ'); return; }
+  document.getElementById('ncUser').value=''; document.getElementById('ncPass').value=''; document.getElementById('ncCompany').value='';
+  loadCustomers();
+}
+
+async function setCustomer(id, patch){
+  await api(`/api/admin/customers/${id}`, {method:'PATCH', body: JSON.stringify(patch)});
+  loadCustomers();
+}
+
+let currentCustomerId = null;
+async function viewDevices(id, username){
+  currentCustomerId = id;
+  document.getElementById('devicesTitle').textContent = `أجهزة العميل: ${username}`;
+  document.getElementById('devicesTitle').classList.remove('hidden');
+  document.getElementById('devTable').classList.remove('hidden');
+  const r = await api(`/api/admin/customers/${id}/devices`);
+  const rows = await r.json();
+  const tb = document.querySelector('#devTable tbody'); tb.innerHTML='';
+  rows.forEach(d=>{
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td style="font-size:11px">${d.device_id.slice(0,18)}…</td>
+      <td><span class="pill ${d.status}">${d.status}</span></td>
+      <td>${new Date(d.first_seen_at).toLocaleDateString('ar-EG')}</td>
+      <td>${new Date(d.last_seen_at).toLocaleString('ar-EG')}</td>
+      <td>
+        ${d.status!=='active' ? `<button class="g" onclick="setDevice(${d.id},'active')">Approve</button>` : ''}
+        ${d.status!=='blocked' ? `<button class="r" onclick="setDevice(${d.id},'blocked')">Block</button>` : `<button class="n" onclick="setDevice(${d.id},'active')">Unblock</button>`}
+      </td>`;
+    tb.appendChild(tr);
+  });
+}
+
+async function setDevice(deviceRowId, status){
+  await api(`/api/admin/devices/${deviceRowId}`, {method:'PATCH', body: JSON.stringify({status})});
+  viewDevices(currentCustomerId);
+  loadCustomers();
+}
+
+async function loadHistory(){
+  const r = await api('/api/admin/login-history');
+  const rows = await r.json();
+  const tb = document.querySelector('#loginTable tbody'); tb.innerHTML='';
+  rows.forEach(h=>{
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${new Date(h.created_at).toLocaleString('ar-EG')}</td><td>${h.username||'—'}</td>
+      <td style="font-size:11px">${h.device_id ? h.device_id.slice(0,14)+'…' : '—'}</td>
+      <td>${h.success ? '<span class="pill active">ok</span>' : `<span class="pill blocked">${h.reason}</span>`}</td>
+      <td>${h.ip||'—'}</td>`;
+    tb.appendChild(tr);
+  });
+}
+
+if (token) showDash();
+</script>
+</body>
+</html>
